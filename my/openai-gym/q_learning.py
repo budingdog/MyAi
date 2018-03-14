@@ -12,11 +12,11 @@ INITIAL_EPSILON = 0.5  # starting value of epsilon
 FINAL_EPSILON = 0.01  # final value of epsilon
 REPLAY_SIZE = 10000  # experience replay buffer size
 BATCH_SIZE = 1000  # size of minibatch
-VERSION='v1'
+VERSION = 'v2'
 LOG_PATH = 'log/{}'.format(VERSION)
 CHECK_POINT_STEP = 10
 CHECK_POINT_PATH = 'model/{}/model.ckpt'.format(VERSION)
-HIDDEN = [64, 64]
+HIDDEN = [64, 32]
 DISP_DELAY = 0
 
 # ---------------------------------------------------------
@@ -26,6 +26,7 @@ ENV_NAME = 'MsPacman-ram-v0'
 EPISODE = 10000  # Episode limitation
 STEP = 300000  # Step limitation in an episode
 TEST = 3  # The number of experiment test every 100 episode
+
 
 class DQN(object):
     # DQN Agent
@@ -52,24 +53,33 @@ class DQN(object):
         except:
             self.session.run(tf.initialize_all_variables())
 
-
     def __del__(self):
         self.session.close()
         self.writer.close()
 
     def create_Q_network(self):
         with tf.name_scope('Q-network'):
-            # network weights
-            W1 = self.weight_variable([self.state_dim, HIDDEN[0]])
-            b1 = self.bias_variable([HIDDEN[0]])
-            W2 = self.weight_variable([HIDDEN[1], self.action_dim])
-            b2 = self.bias_variable([self.action_dim])
             # input layer
             self.state_input = tf.placeholder("float", [None, self.state_dim])
+            input_dim = self.state_dim
+            input_tensors = self.state_input
+
             # hidden layers
-            h_layer = tf.nn.relu(tf.matmul(self.state_input, W1) + b1)
+            len_hidden = len(HIDDEN)
+            for i in range(0, len_hidden):
+                W = self.weight_variable([input_dim, HIDDEN[i]])
+                B = self.bias_variable([HIDDEN[i]])
+                h_layer = tf.nn.relu(tf.matmul(input_tensors, W) + B)
+                input_tensors = h_layer
+                input_dim = HIDDEN[i]
+                if (i + 1 < len_hidden):
+                    output_dim = HIDDEN[i + 1]
+                else:
+                    output_dim = self.action_dim
             # Q Value layer
-            self.Q_value = tf.matmul(h_layer, W2) + b2
+            W_q = self.weight_variable([input_dim, self.action_dim])
+            B_q = self.bias_variable([self.action_dim])
+            self.Q_value = tf.matmul(h_layer, W_q) + B_q
 
     def create_training_method(self):
         with tf.name_scope('loss'):
@@ -151,6 +161,7 @@ class DQN(object):
 
     def save_model(self):
         self.saver.save(self.session, CHECK_POINT_PATH)
+
 
 def main():
     # initialize OpenAI Gym env and dqn agent
