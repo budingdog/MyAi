@@ -1,43 +1,20 @@
-import gym
+import random
+from collections import deque
 import tensorflow as tf
 import numpy as np
-import random
-import os
-from collections import deque
-import time
-
-# Hyper Parameters for DQN
-GAMMA = 0.8  # discount factor for target Q
-INITIAL_EPSILON = 0.5  # starting value of epsilon
-FINAL_EPSILON = 0.01  # final value of epsilon
-REPLAY_SIZE = 1024  # experience replay buffer size
-BATCH_SIZE = 128  # size of minibatch
-VERSION = 'v4'
-LOG_PATH = 'log/{}'.format(VERSION)
-CHECK_POINT_STEP = 10
-CHECK_POINT_PATH = 'model/{}/model.ckpt'.format(VERSION)
-HIDDEN = [128, 64, 32]
-DISP_DELAY = 30
-
-# ---------------------------------------------------------
-# Hyper Parameters
-# ENV_NAME = 'CartPole-v0'
-ENV_NAME = 'MsPacman-ram-v0'
-# ENV_NAME = 'SpaceInvaders-ram-v0'
-EPISODE = 10000  # Episode limitation
-STEP = 300000  # Step limitation in an episode
-TEST = 3  # The number of experiment test every 100 episode
 
 
 class DQN(object):
     # DQN Agent
-    def __init__(self, env):
+    def __init__(self, env, config):
+
+        self.config = config
         # init experience replay
-        self.replay_buffer = deque(maxlen=REPLAY_SIZE / 2)
-        self.replay_buffer_neg = deque(maxlen=REPLAY_SIZE / 2)
+        self.replay_buffer = deque(maxlen=config.REPLAY_SIZE / 2)
+        self.replay_buffer_neg = deque(maxlen=config.REPLAY_SIZE / 2)
         # init some parameters
         self.time_step = 0
-        self.epsilon = INITIAL_EPSILON
+        self.epsilon = config.INITIAL_EPSILON
         self.state_dim = env.observation_space.shape[0]
         self.action_dim = env.action_space.n
 
@@ -46,12 +23,12 @@ class DQN(object):
 
         # Init session
         self.session = tf.InteractiveSession()
-        self.writer = tf.summary.FileWriter(LOG_PATH, self.session.graph)
+        self.writer = tf.summary.FileWriter(config.LOG_PATH, self.session.graph)
         self.saver = tf.train.Saver()
         self.summary = tf.summary.merge_all()
 
         try:
-            self.saver.restore(self.session, CHECK_POINT_PATH)
+            self.saver.restore(self.session, config.CHECK_POINT_PATH)
         except:
             self.session.run(tf.initialize_all_variables())
 
@@ -67,13 +44,13 @@ class DQN(object):
             input_tensors = self.state_input
 
             # hidden layers
-            len_hidden = len(HIDDEN)
+            len_hidden = len(self.config.HIDDEN)
             for i in range(0, len_hidden):
-                W = self.weight_variable([input_dim, HIDDEN[i]])
-                B = self.bias_variable([HIDDEN[i]])
+                W = self.weight_variable([input_dim, self.config.HIDDEN[i]])
+                B = self.bias_variable([self.config.HIDDEN[i]])
                 h_layer = tf.nn.relu(tf.matmul(input_tensors, W) + B)
                 input_tensors = h_layer
-                input_dim = HIDDEN[i]
+                input_dim = self.config.HIDDEN[i]
             # Q Value layer
             W_q = self.weight_variable([input_dim, self.action_dim])
             B_q = self.bias_variable([self.action_dim])
@@ -97,7 +74,7 @@ class DQN(object):
         else:
             self.replay_buffer_neg.append((state, one_hot_action, reward, next_state, done))
 
-        if (len(self.replay_buffer) + len(self.replay_buffer_neg)) > BATCH_SIZE:
+        if (len(self.replay_buffer) + len(self.replay_buffer_neg)) > self.config.BATCH_SIZE:
             self.train_Q_network()
 
     def train_Q_network(self):
@@ -118,16 +95,16 @@ class DQN(object):
     def generate_y_label(self, minibatch, next_state_batch, reward_batch):
         y_batch = []
         Q_value_batch = self.Q_value.eval(feed_dict={self.state_input: next_state_batch})
-        for i in range(0, BATCH_SIZE):
+        for i in range(0, self.config.BATCH_SIZE):
             done = minibatch[i][4]
             if done:
                 y_batch.append(reward_batch[i])
             else:
-                y_batch.append(reward_batch[i] + GAMMA * np.max(Q_value_batch[i]))
+                y_batch.append(reward_batch[i] + self.config.GAMMA * np.max(Q_value_batch[i]))
         return y_batch
 
     def obtain_minibatch(self):
-        minibatch = random.sample(list(self.replay_buffer) + list(self.replay_buffer_neg), BATCH_SIZE)
+        minibatch = random.sample(list(self.replay_buffer) + list(self.replay_buffer_neg), self.config.BATCH_SIZE)
         state_batch = [data[0] for data in minibatch]
         action_batch = [data[1] for data in minibatch]
         reward_batch = [data[2] for data in minibatch]
@@ -135,7 +112,7 @@ class DQN(object):
         return action_batch, minibatch, next_state_batch, reward_batch, state_batch
 
     def egreedy_action(self, state):
-        self.epsilon -= (INITIAL_EPSILON - FINAL_EPSILON) / EPISODE
+        self.epsilon -= (self.config.INITIAL_EPSILON - self.config.FINAL_EPSILON) / self.config.EPISODE
         if random.random() <= self.epsilon:
             return random.randint(0, self.action_dim - 1)
         else:
@@ -155,52 +132,4 @@ class DQN(object):
         return tf.Variable(initial)
 
     def save_model(self):
-        self.saver.save(self.session, CHECK_POINT_PATH)
-
-
-def main():
-    # initialize OpenAI Gym env and dqn agent
-    env = gym.make(ENV_NAME)
-    agent = DQN(env)
-
-    for episode in xrange(EPISODE):
-        # initialize task
-        state = env.reset()
-        # Train
-        reward_sum = 0;
-        for step in xrange(STEP):
-            action = agent.egreedy_action(state)  # e-greedy action for train
-            next_state, reward, done, _ = env.step(action)
-            if done:
-                reward = -100
-            # Define reward for agent
-            reward_sum += reward
-            agent.perceive(state, action, reward, next_state, done)
-            # print('step:{}, reward:{}, action:{}'.format(step, reward, action))
-            state = next_state
-            if done:
-                print('episode:{}, step:{}, reward:{}, reward_avg:{}'.format(episode, step, reward_sum,
-                                                                             float(reward_sum) / step))
-                break
-        # save model
-        if episode % CHECK_POINT_STEP == 0:
-            agent.save_model()
-        # Test every 100 episodes
-        if episode % 100 == 0:
-            total_reward = 0
-            for i in xrange(TEST):
-                state = env.reset()
-                for j in xrange(STEP):
-                    env.render()
-                    time.sleep(DISP_DELAY / 1000.0)
-                    action = agent.action(state)  # direct action for test
-                    state, reward, done, _ = env.step(action)
-                    total_reward += reward
-                    if done:
-                        break
-            ave_reward = total_reward / TEST
-            print '\nepisode: ', episode, 'Evaluation Average Reward:', ave_reward
-
-
-if __name__ == '__main__':
-    main()
+        self.saver.save(self.session, self.config.CHECK_POINT_PATH)
