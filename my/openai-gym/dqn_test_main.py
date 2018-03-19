@@ -15,7 +15,10 @@ DISP_DELAY = 30
 def main():
     # initialize OpenAI Gym env and dqn agent
     env = gym.make(ENV_NAME)
-    agent = DQN(env, DqnConfig(EPISODE, 'v5'))
+    config = DqnConfig(EPISODE, 'v0')
+    config.HIDDEN = [128, 64, 32]
+    agent = DQN(env, config)
+
 
     for episode in xrange(EPISODE):
 

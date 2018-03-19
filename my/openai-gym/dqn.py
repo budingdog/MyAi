@@ -55,6 +55,7 @@ class DQN(object):
             W_q = self.weight_variable([input_dim, self.action_dim])
             B_q = self.bias_variable([self.action_dim])
             self.Q_value = tf.matmul(h_layer, W_q) + B_q
+            tf.summary.scalar('Q-value', tf.reduce_max(self.Q_value))
 
     def create_training_method(self):
         with tf.name_scope('loss'):

@@ -3,63 +3,39 @@ from dqn import DQN
 from dqn_config import DqnConfig
 import time
 
-# ENV_NAME = 'CartPole-v0'
-ENV_NAME = 'MsPacman-ram-v0'
+ENV_NAME = 'CartPole-v0'
+# ENV_NAME = 'MsPacman-ram-v0'
 # ENV_NAME = 'SpaceInvaders-ram-v0'
 EPISODE = 10000  # Episode limitation
 STEP = 300000  # Step limitation in an episode
 CHECK_POINT_STEP = 10
 TEST = 3  # The number of experiment test every 100 episode
-DISP_DELAY = 0
-
-
-class Rewarder(object):
-
-    def __init__(self):
-        self.last_info = None
-
-    def get_reward(self, reward, done, info):
-        res_result = 0
-        if done == False:
-            if reward > 0:
-                res_result = reward
-            elif self.last_info != None and self.last_info['ale.lives'] - info['ale.lives'] > 0:
-                res_result = -50
-        else:
-            if info['ale.lives'] > 0:
-                res_result = 1000
-            else:
-                res_result = -100
-        self.last_info = info
-        return res_result
+DISP_DELAY = 30
 
 
 def main():
     # initialize OpenAI Gym env and dqn agent
     env = gym.make(ENV_NAME)
-    config = DqnConfig(EPISODE, 'v0')
-    config.HIDDEN = [128, 64, 32]
+    config = DqnConfig(EPISODE, 'v6')
+    config.HIDDEN = [20, 20]
     agent = DQN(env, config)
 
-    for episode in xrange(1, EPISODE):
+    for episode in xrange(EPISODE):
         # initialize task
         state = env.reset()
         # Train
         reward_sum = 0;
-        rewarder = Rewarder()
         for step in xrange(STEP):
             action = agent.egreedy_action(state)  # e-greedy action for train
             next_state, reward, done, _ = env.step(action)
-            reward = rewarder.get_reward(reward, done, _)
             # Define reward for agent
             reward_sum += reward
             agent.perceive(state, action, reward, next_state, done)
             # print('step:{}, reward:{}, action:{}'.format(step, reward, action))
             state = next_state
             if done:
-                step_reward = float(reward_sum) / step
                 print('episode:{}, step:{}, reward:{}, reward_avg:{}'.format(episode, step, reward_sum,
-                                                                             step_reward))
+                                                                             float(reward_sum) / step))
                 break
         # save model
         if episode % CHECK_POINT_STEP == 0:
@@ -77,8 +53,8 @@ def main():
                     total_reward += reward
                     if done:
                         break
-            avg_reward = total_reward / TEST
-            print '\nepisode: ', episode, 'Evaluation Average Reward:', avg_reward
+            ave_reward = total_reward / TEST
+            print '\nepisode: ', episode, 'Evaluation Average Reward:', ave_reward
 
 
 if __name__ == '__main__':

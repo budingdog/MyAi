@@ -16,13 +16,13 @@ VERSION = 'v4'
 LOG_PATH = 'log/{}'.format(VERSION)
 CHECK_POINT_STEP = 10
 CHECK_POINT_PATH = 'model/{}/model.ckpt'.format(VERSION)
-HIDDEN = [128, 64, 32]
+HIDDEN = [20, 20]
 DISP_DELAY = 30
 
 # ---------------------------------------------------------
 # Hyper Parameters
-# ENV_NAME = 'CartPole-v0'
-ENV_NAME = 'MsPacman-ram-v0'
+ENV_NAME = 'CartPole-v0'
+# ENV_NAME = 'MsPacman-ram-v0'
 # ENV_NAME = 'SpaceInvaders-ram-v0'
 EPISODE = 10000  # Episode limitation
 STEP = 300000  # Step limitation in an episode
@@ -171,8 +171,6 @@ def main():
         for step in xrange(STEP):
             action = agent.egreedy_action(state)  # e-greedy action for train
             next_state, reward, done, _ = env.step(action)
-            if done:
-                reward = -100
             # Define reward for agent
             reward_sum += reward
             agent.perceive(state, action, reward, next_state, done)
