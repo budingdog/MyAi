@@ -6,14 +6,14 @@ from collections import deque
 from sample_buffer import SampleBuffer
 
 # ENV_NAME = 'CartPole-v0'
-ENV_NAME = 'MsPacman-ram-v0'
+ENV_NAME = 'MsPacman-v0'
 # ENV_NAME = 'SpaceInvaders-ram-v0'
 EPISODE = 10000  # Episode limitation
 STEP = 300000  # Step limitation in an episode
 CHECK_POINT_STEP = 10
 TEST = 3  # The number of experiment test every 100 episode
 DISP_DELAY = 0
-VERSION = 'v5'
+VERSION = 'v6'
 FRAME = 4
 
 
@@ -47,11 +47,11 @@ def main():
     for episode in xrange(1, EPISODE):
         # initialize task
         state = env.reset()
-        sb = SampleBuffer(FRAME, len(state))
+        sb = SampleBuffer(FRAME, env.observation_space.shape)
         input_state = sb.store(state)
 
         # Train
-        reward_sum = 0;
+        reward_sum = 0
         rewarder = Rewarder()
         for step in xrange(STEP):
             action = agent.egreedy_action(input_state)  # e-greedy action for train

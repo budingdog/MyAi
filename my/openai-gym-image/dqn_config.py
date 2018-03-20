@@ -9,7 +9,7 @@ class DqnConfig(object):
         self.VERSION = version
         self.CHECK_POINT_PATH = 'model/{}/model.ckpt'.format(self.VERSION)
         self.LOG_PATH = 'log/{}'.format(self.VERSION)
-        self.HIDDEN = [512, 256, 128]
+        self.HIDDEN = [16, 32, 256]
         self.BATCH_SIZE = 128  # size of minibatch
         self.GAMMA = 0.9  # discount factor for target Q
         self.EPISODE = episode  # Episode limitation

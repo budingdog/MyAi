@@ -15,22 +15,25 @@ class DQN(object):
         # init some parameters
         self.time_step = 0
         self.epsilon = config.INITIAL_EPSILON
-        self.state_dim = env.observation_space.shape[0] * self.config.FRAME
+        self.state_height = env.observation_space.shape[0]
+        self.state_width = env.observation_space.shape[1]
+        self.state_channel = env.observation_space.shape[2] * config.FRAME
         self.action_dim = env.action_space.n
-
-        self.create_Q_network()
-        self.create_training_method()
 
         # Init session
         self.session = tf.InteractiveSession()
         self.writer = tf.summary.FileWriter(config.LOG_PATH, self.session.graph)
+
+        self.create_Q_network()
+        self.create_training_method()
+
         self.saver = tf.train.Saver()
         self.summary = tf.summary.merge_all()
 
         try:
             self.saver.restore(self.session, config.CHECK_POINT_PATH)
         except:
-            self.session.run(tf.initialize_all_variables())
+            self.session.run(tf.global_variables_initializer())
 
     def __del__(self):
         self.session.close()
@@ -39,22 +42,26 @@ class DQN(object):
     def create_Q_network(self):
         with tf.name_scope('Q-network'):
             # input layer
-            self.state_input = tf.placeholder("float", [None, self.state_dim])
-            input_dim = self.state_dim
-            input_tensors = self.state_input
-
-            # hidden layers
-            len_hidden = len(self.config.HIDDEN)
-            for i in range(0, len_hidden):
-                W = self.weight_variable([input_dim, self.config.HIDDEN[i]])
-                B = self.bias_variable([self.config.HIDDEN[i]])
-                h_layer = tf.nn.relu(tf.matmul(input_tensors, W) + B)
-                input_tensors = h_layer
-                input_dim = self.config.HIDDEN[i]
-            # Q Value layer
-            W_q = self.weight_variable([input_dim, self.action_dim])
-            B_q = self.bias_variable([self.action_dim])
-            self.Q_value = tf.matmul(h_layer, W_q) + B_q
+            self.state_input = tf.placeholder("float", [None, self.state_height, self.state_width, self.state_channel])
+            conv1 = tf.get_variable('conv1',
+                                    [self.state_height, self.state_width, self.state_channel, self.config.HIDDEN[0]],
+                                    dtype=tf.float32,
+                                    initializer=tf.random_uniform_initializer)
+            conv_layer1 = tf.nn.conv2d(self.state_input, filter=conv1, strides=[1, 8, 8, 1], padding='SAME',
+                                       name='conv_layer1')
+            conv2 = tf.get_variable('conv2',
+                                    [self.state_height, self.state_width, self.config.HIDDEN[0], self.config.HIDDEN[1]],
+                                    dtype=tf.float32,
+                                    initializer=tf.random_uniform_initializer)
+            conv_layer2 = tf.nn.conv2d(conv_layer1, filter=conv2, strides=[1, 8, 8, 1], padding='SAME',
+                                       name='conv_layer2')
+            input_tensors = tf.reshape(conv_layer2,
+                                       [-1, conv_layer2.shape[1] * conv_layer2.shape[2] * conv_layer2.shape[3]])
+            for i in range(2, len(self.config.HIDDEN)):
+                input_tensors = tf.layers.dense(input_tensors, units=self.config.HIDDEN[i], activation=tf.nn.relu,
+                                                name='hidden{}'.format(i))
+            self.Q_value = tf.layers.dense(input_tensors, units=self.action_dim, activation=tf.nn.sigmoid,
+                                           name='output')
             tf.summary.scalar('Q-value', tf.reduce_max(self.Q_value))
 
     def create_training_method(self):
