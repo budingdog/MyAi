@@ -3,7 +3,7 @@ class DqnConfig(object):
     def __init__(self, episode, version):
         super(DqnConfig, self).__init__()
         self.REPLAY_SIZE = 1024  # experience replay buffer size
-        self.BATCH_SIZE = 128  # size of minibatch
+        self.BATCH_SIZE = 32  # size of minibatch
         self.INITIAL_EPSILON = 0.5  # starting value of epsilon
         self.FINAL_EPSILON = 0.01  # final value of epsilon
         self.VERSION = version

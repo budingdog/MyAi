@@ -14,4 +14,6 @@ class SampleBuffer(object):
 
     def store(self, state):
         self.queue.append(state)
-        return np.concatenate(tuple(self.queue), axis=2)
+        A = list(self.queue)
+        B = np.einsum('abcd->bcda', A)
+        return B

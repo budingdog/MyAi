@@ -17,15 +17,15 @@ class DQN(object):
         self.epsilon = config.INITIAL_EPSILON
         self.state_height = env.observation_space.shape[0]
         self.state_width = env.observation_space.shape[1]
-        self.state_channel = env.observation_space.shape[2] * config.FRAME
+        self.state_channel = env.observation_space.shape[2]
         self.action_dim = env.action_space.n
 
         # Init session
         self.session = tf.InteractiveSession()
-        self.writer = tf.summary.FileWriter(config.LOG_PATH, self.session.graph)
-
         self.create_Q_network()
         self.create_training_method()
+        self.writer = tf.summary.FileWriter(config.LOG_PATH, self.session.graph)
+        self.create_summary()
 
         self.saver = tf.train.Saver()
         self.summary = tf.summary.merge_all()
@@ -40,14 +40,18 @@ class DQN(object):
         self.writer.close()
 
     def create_Q_network(self):
+        # input layer
+        self.state_input = tf.placeholder("float", [None, self.state_height, self.state_width, self.state_channel,
+                                                    self.config.FRAME])
+        with tf.name_scope('image-compress'):
+            compress = tf.constant(np.ones([1, 5, 5, 3, 1]), dtype=tf.float32)
+            compressed_input = tf.nn.conv3d(self.state_input, filter=compress, strides=[1, 3, 2, 3, 1], padding='SAME')
         with tf.name_scope('Q-network'):
-            # input layer
-            self.state_input = tf.placeholder("float", [None, self.state_height, self.state_width, self.state_channel])
             conv1 = tf.get_variable('conv1',
                                     [self.state_height, self.state_width, self.state_channel, self.config.HIDDEN[0]],
                                     dtype=tf.float32,
                                     initializer=tf.random_uniform_initializer)
-            conv_layer1 = tf.nn.conv2d(self.state_input, filter=conv1, strides=[1, 8, 8, 1], padding='SAME',
+            conv_layer1 = tf.nn.conv2d(compressed_input, filter=conv1, strides=[1, 8, 8, 1], padding='SAME',
                                        name='conv_layer1')
             conv2 = tf.get_variable('conv2',
                                     [self.state_height, self.state_width, self.config.HIDDEN[0], self.config.HIDDEN[1]],
@@ -62,7 +66,6 @@ class DQN(object):
                                                 name='hidden{}'.format(i))
             self.Q_value = tf.layers.dense(input_tensors, units=self.action_dim, activation=tf.nn.sigmoid,
                                            name='output')
-            tf.summary.scalar('Q-value', tf.reduce_max(self.Q_value))
 
     def create_training_method(self):
         with tf.name_scope('loss'):
@@ -71,8 +74,11 @@ class DQN(object):
             Q_action = tf.reduce_sum(tf.multiply(self.Q_value, self.action_input), reduction_indices=1, name='y')
             self.cost = tf.reduce_mean(tf.square(self.y_input - Q_action))
             # self.cost = tf.losses.softmax_cross_entropy(self.y_input, Q_action)
-            tf.summary.scalar('loss', self.cost)
         self.optimizer = tf.train.AdamOptimizer(0.0001).minimize(self.cost)
+
+    def create_summary(self):
+        tf.summary.scalar('Q-value', tf.reduce_max(self.Q_value))
+        tf.summary.scalar('loss', self.cost)
 
     def perceive(self, state, action, reward, next_state, done):
         one_hot_action = np.zeros(self.action_dim)
@@ -87,6 +93,7 @@ class DQN(object):
 
     def train_Q_network(self):
         self.time_step += 1
+        print('step:{}'.format(self.time_step))
         # Step 1: obtain random minibatch from replay memory
         action_batch, minibatch, next_state_batch, reward_batch, state_batch = self.obtain_minibatch()
 

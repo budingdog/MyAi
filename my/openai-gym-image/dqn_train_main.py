@@ -13,7 +13,7 @@ STEP = 300000  # Step limitation in an episode
 CHECK_POINT_STEP = 10
 TEST = 3  # The number of experiment test every 100 episode
 DISP_DELAY = 0
-VERSION = 'v6'
+VERSION = 'v8'
 FRAME = 4
 
 
