@@ -4,3 +4,6 @@
 [submodule "models"]
 	path = models
 	url = https://github.com/tensorflow/models.git
+[submodule "tiny-dqn"]
+	path = tiny-dqn
+	url = https://github.com/ageron/tiny-dqn.git
