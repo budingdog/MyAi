@@ -4,13 +4,16 @@ from dqn_config import DqnConfig
 import time
 from collections import deque
 from sample_buffer import SampleBuffer
+import pickle
+from img_processor import ImgProcessor
 
 # ENV_NAME = 'CartPole-v0'
 ENV_NAME = 'MsPacman-v0'
-# ENV_NAME = 'SpaceInvaders-ram-v0'
-EPISODE = 10000  # Episode limitation
+# ENV_NAME = 'SpaceInvaders-v0'
+# ENV_NAME = 'Breakout-v0'
+EPISODE = 1000  # Episode limitation
 STEP = 300000  # Step limitation in an episode
-CHECK_POINT_STEP = 10
+CHECK_POINT_STEP = 1
 TEST = 3  # The number of experiment test every 100 episode
 DISP_DELAY = 0
 VERSION = 'v8'
@@ -43,11 +46,13 @@ def main():
     env = gym.make(ENV_NAME)
     config = DqnConfig(EPISODE, VERSION)
     agent = DQN(env, config)
+    ip = ImgProcessor()
 
-    for episode in xrange(1, EPISODE):
+    for episode in xrange(0, EPISODE):
         # initialize task
         state = env.reset()
-        sb = SampleBuffer(FRAME, env.observation_space.shape)
+        state = ip.convert(state)
+        sb = SampleBuffer(FRAME, [state.shape[0], state.shape[1]])
         input_state = sb.store(state)
 
         # Train
@@ -56,6 +61,7 @@ def main():
         for step in xrange(STEP):
             action = agent.egreedy_action(input_state)  # e-greedy action for train
             next_state, reward, done, _ = env.step(action)
+            next_state = ip.convert(next_state)
             next_input_state = sb.store(next_state)
             reward = rewarder.get_reward(reward, done, _)
             # Define reward for agent
@@ -76,14 +82,16 @@ def main():
             total_reward = 0
             for i in xrange(TEST):
                 state = env.reset()
-                sb = SampleBuffer(FRAME, len(state))
+                state = ip.convert(state)
+                sb = SampleBuffer(FRAME, [state.shape[0], state.shape[1]])
                 input_state = sb.store(state)
                 for j in xrange(STEP):
                     env.render()
                     time.sleep(DISP_DELAY / 1000.0)
                     action = agent.action(input_state)  # direct action for test
+                    next_state, reward, done, _ = env.step(action)
+                    next_state = ip.convert(next_state)
                     next_input_state = sb.store(next_state)
-                    state, reward, done, _ = env.step(action)
                     total_reward += reward
                     input_state = next_input_state
                     if done:

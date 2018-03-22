@@ -15,5 +15,5 @@ class SampleBuffer(object):
     def store(self, state):
         self.queue.append(state)
         A = list(self.queue)
-        B = np.einsum('abcd->bcda', A)
+        B = np.einsum('abc->bca', A)
         return B

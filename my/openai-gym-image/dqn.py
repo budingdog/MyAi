@@ -10,14 +10,13 @@ class DQN(object):
 
         self.config = config
         # init experience replay
-        self.replay_buffer = deque(maxlen=config.REPLAY_SIZE / 2)
-        self.replay_buffer_neg = deque(maxlen=config.REPLAY_SIZE / 2)
+        self.replay_buffer = deque(maxlen=config.REPLAY_SIZE)
+        self.replay_buffer_neg = deque(maxlen=config.REPLAY_SIZE)
         # init some parameters
         self.time_step = 0
         self.epsilon = config.INITIAL_EPSILON
-        self.state_height = env.observation_space.shape[0]
-        self.state_width = env.observation_space.shape[1]
-        self.state_channel = env.observation_space.shape[2]
+        self.state_height = 84
+        self.state_width = 84
         self.action_dim = env.action_space.n
 
         # Init session
@@ -41,30 +40,20 @@ class DQN(object):
 
     def create_Q_network(self):
         # input layer
-        self.state_input = tf.placeholder("float", [None, self.state_height, self.state_width, self.state_channel,
-                                                    self.config.FRAME])
-        with tf.name_scope('image-compress'):
-            compress = tf.constant(np.ones([1, 5, 5, 3, 1]), dtype=tf.float32)
-            compressed_input = tf.nn.conv3d(self.state_input, filter=compress, strides=[1, 3, 2, 3, 1], padding='SAME')
+        self.state_input = tf.placeholder("float", [None, self.state_height, self.state_width, self.config.FRAME])
         with tf.name_scope('Q-network'):
-            conv1 = tf.get_variable('conv1',
-                                    [self.state_height, self.state_width, self.state_channel, self.config.HIDDEN[0]],
-                                    dtype=tf.float32,
-                                    initializer=tf.random_uniform_initializer)
-            conv_layer1 = tf.nn.conv2d(compressed_input, filter=conv1, strides=[1, 8, 8, 1], padding='SAME',
-                                       name='conv_layer1')
-            conv2 = tf.get_variable('conv2',
-                                    [self.state_height, self.state_width, self.config.HIDDEN[0], self.config.HIDDEN[1]],
-                                    dtype=tf.float32,
-                                    initializer=tf.random_uniform_initializer)
-            conv_layer2 = tf.nn.conv2d(conv_layer1, filter=conv2, strides=[1, 8, 8, 1], padding='SAME',
-                                       name='conv_layer2')
+            conv1 = tf.layers.Conv2D(filters=self.config.HIDDEN[0], kernel_size=[8,8],strides=[4,4],
+                                     padding='SAME',activation=tf.nn.relu)
+            conv_layer1 = conv1(self.state_input)
+            conv2 = tf.layers.Conv2D(filters=self.config.HIDDEN[1], kernel_size=[4,4],strides=[2,2],
+                                     padding='SAME',activation=tf.nn.relu)
+            conv_layer2 = conv2(conv_layer1)
             input_tensors = tf.reshape(conv_layer2,
                                        [-1, conv_layer2.shape[1] * conv_layer2.shape[2] * conv_layer2.shape[3]])
             for i in range(2, len(self.config.HIDDEN)):
                 input_tensors = tf.layers.dense(input_tensors, units=self.config.HIDDEN[i], activation=tf.nn.relu,
                                                 name='hidden{}'.format(i))
-            self.Q_value = tf.layers.dense(input_tensors, units=self.action_dim, activation=tf.nn.sigmoid,
+            self.Q_value = tf.layers.dense(input_tensors, units=self.action_dim, activation=tf.nn.relu,
                                            name='output')
 
     def create_training_method(self):
@@ -74,7 +63,7 @@ class DQN(object):
             Q_action = tf.reduce_sum(tf.multiply(self.Q_value, self.action_input), reduction_indices=1, name='y')
             self.cost = tf.reduce_mean(tf.square(self.y_input - Q_action))
             # self.cost = tf.losses.softmax_cross_entropy(self.y_input, Q_action)
-        self.optimizer = tf.train.AdamOptimizer(0.0001).minimize(self.cost)
+        self.optimizer = tf.train.AdamOptimizer(0.001).minimize(self.cost)
 
     def create_summary(self):
         tf.summary.scalar('Q-value', tf.reduce_max(self.Q_value))
@@ -88,12 +77,16 @@ class DQN(object):
         else:
             self.replay_buffer_neg.append((state, one_hot_action, reward, next_state, done))
 
-        if (len(self.replay_buffer) + len(self.replay_buffer_neg)) > self.config.BATCH_SIZE:
+        if self.can_begin_train():
             self.train_Q_network()
+
+    def can_begin_train(self):
+        return len(self.replay_buffer) >= self.config.REPLAY_SIZE and len(
+            self.replay_buffer_neg) >= self.config.REPLAY_SIZE
 
     def train_Q_network(self):
         self.time_step += 1
-        print('step:{}'.format(self.time_step))
+        print '.',
         # Step 1: obtain random minibatch from replay memory
         action_batch, minibatch, next_state_batch, reward_batch, state_batch = self.obtain_minibatch()
 
