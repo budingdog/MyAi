@@ -16,8 +16,9 @@ STEP = 300000  # Step limitation in an episode
 CHECK_POINT_STEP = 1
 TEST = 3  # The number of experiment test every 100 episode
 DISP_DELAY = 0
-VERSION = 'v8'
+VERSION = 'v9'
 FRAME = 4
+TRAIN_LOOP = 10
 
 
 class Rewarder(object):
@@ -29,14 +30,14 @@ class Rewarder(object):
         res_result = 0
         if done == False:
             if reward > 0:
-                res_result = reward
+                res_result = 1.0
             elif self.last_info != None and self.last_info['ale.lives'] - info['ale.lives'] > 0:
-                res_result = -50
+                res_result = -1.0
         else:
             if info['ale.lives'] > 0:
-                res_result = 1000
+                res_result = 1.0
             else:
-                res_result = -100
+                res_result = -1.0
         self.last_info = info
         return res_result
 
@@ -46,9 +47,9 @@ def main():
     env = gym.make(ENV_NAME)
     config = DqnConfig(EPISODE, VERSION)
     agent = DQN(env, config)
-    ip = ImgProcessor()
+    ip = ImgProcessor(config)
 
-    for episode in xrange(0, EPISODE):
+    for episode in xrange(1, EPISODE):
         # initialize task
         state = env.reset()
         state = ip.convert(state)
@@ -66,13 +67,14 @@ def main():
             reward = rewarder.get_reward(reward, done, _)
             # Define reward for agent
             reward_sum += reward
-            agent.perceive(input_state, action, reward, next_input_state, done)
+            agent.store_sample(input_state, action, reward, next_input_state, done)
             # print('step:{}, reward:{}, action:{}'.format(step, reward, action))
             input_state = next_input_state
             if done:
                 step_reward = float(reward_sum) / step
                 print('episode:{}, step:{}, reward:{}, reward_avg:{}'.format(episode, step, reward_sum,
                                                                              step_reward))
+                agent.do_train(TRAIN_LOOP, step, reward_sum)
                 break
         # save model
         if episode % CHECK_POINT_STEP == 0:

@@ -1,6 +1,6 @@
 class DqnConfig(object):
 
-    def __init__(self, episode, version):
+    def __init__(self, episode, version, frame):
         super(DqnConfig, self).__init__()
         self.REPLAY_SIZE = 1024  # experience replay buffer size
         self.BATCH_SIZE = 128  # size of minibatch
@@ -9,8 +9,8 @@ class DqnConfig(object):
         self.VERSION = version
         self.CHECK_POINT_PATH = 'model/{}/model.ckpt'.format(self.VERSION)
         self.LOG_PATH = 'log/{}'.format(self.VERSION)
-        self.HIDDEN = [512, 256, 128]
+        self.HIDDEN = [20, 20, 10]
         self.BATCH_SIZE = 128  # size of minibatch
         self.GAMMA = 0.9  # discount factor for target Q
         self.EPISODE = episode  # Episode limitation
-        self.FRAME = 4
+        self.FRAME = frame

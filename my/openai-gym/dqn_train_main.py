@@ -5,16 +5,16 @@ import time
 from collections import deque
 from sample_buffer import SampleBuffer
 
-# ENV_NAME = 'CartPole-v0'
-ENV_NAME = 'MsPacman-ram-v0'
+ENV_NAME = 'CartPole-v0'
+# ENV_NAME = 'MsPacman-ram-v0'
 # ENV_NAME = 'SpaceInvaders-ram-v0'
 EPISODE = 10000  # Episode limitation
 STEP = 300000  # Step limitation in an episode
 CHECK_POINT_STEP = 10
 TEST = 3  # The number of experiment test every 100 episode
-DISP_DELAY = 0
-VERSION = 'v5'
-FRAME = 4
+DISP_DELAY = 30
+VERSION = 'v7'
+FRAME = 1
 
 
 class Rewarder(object):
@@ -24,27 +24,30 @@ class Rewarder(object):
 
     def get_reward(self, reward, done, info):
         res_result = 0
-        if done == False:
-            if reward > 0:
-                res_result = reward
-            elif self.last_info != None and self.last_info['ale.lives'] - info['ale.lives'] > 0:
-                res_result = -50
-        else:
-            if info['ale.lives'] > 0:
-                res_result = 1000
+        if ENV_NAME != 'CartPole-v0':
+            if done == False:
+                if reward > 0:
+                    res_result = reward
+                elif self.last_info != None and self.last_info['ale.lives'] - info['ale.lives'] > 0:
+                    res_result = -50
             else:
-                res_result = -100
-        self.last_info = info
-        return res_result
+                if info['ale.lives'] > 0:
+                    res_result = 1000
+                else:
+                    res_result = -100
+            self.last_info = info
+            return res_result
+        else:
+            return reward
 
 
 def main():
     # initialize OpenAI Gym env and dqn agent
     env = gym.make(ENV_NAME)
-    config = DqnConfig(EPISODE, VERSION)
+    config = DqnConfig(EPISODE, VERSION, FRAME)
     agent = DQN(env, config)
 
-    for episode in xrange(1, EPISODE):
+    for episode in xrange(0, EPISODE):
         # initialize task
         state = env.reset()
         sb = SampleBuffer(FRAME, len(state))

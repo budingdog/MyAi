@@ -13,7 +13,6 @@ class DQN(object):
         self.replay_buffer = deque(maxlen=config.REPLAY_SIZE)
         self.replay_buffer_neg = deque(maxlen=config.REPLAY_SIZE)
         # init some parameters
-        self.time_step = 0
         self.epsilon = config.INITIAL_EPSILON
         self.state_height = 84
         self.state_width = 84
@@ -41,6 +40,10 @@ class DQN(object):
     def create_Q_network(self):
         # input layer
         self.state_input = tf.placeholder("float", [None, self.state_height, self.state_width, self.config.FRAME])
+        self.max_step = tf.placeholder("float")
+        self.reward_sum = tf.placeholder("float")
+        self.reward_avg = self.reward_sum / self.max_step
+        self.iteration = tf.get_variable('name', shape=[1], dtype='int32', initializer=tf.initializers.zeros)
         with tf.name_scope('Q-network'):
             conv1 = tf.layers.Conv2D(filters=self.config.HIDDEN[0], kernel_size=[8,8],strides=[4,4],
                                      padding='SAME',activation=tf.nn.relu)
@@ -68,8 +71,11 @@ class DQN(object):
     def create_summary(self):
         tf.summary.scalar('Q-value', tf.reduce_max(self.Q_value))
         tf.summary.scalar('loss', self.cost)
+        tf.summary.scalar('step', self.max_step)
+        tf.summary.scalar('reward', self.reward_sum)
+        tf.summary.scalar('reward.avg', self.reward_avg)
 
-    def perceive(self, state, action, reward, next_state, done):
+    def store_sample(self, state, action, reward, next_state, done):
         one_hot_action = np.zeros(self.action_dim)
         one_hot_action[action] = 1
         if reward != 0:
@@ -77,15 +83,18 @@ class DQN(object):
         else:
             self.replay_buffer_neg.append((state, one_hot_action, reward, next_state, done))
 
-        if self.can_begin_train():
-            self.train_Q_network()
+
+    def do_train(self, loop, max_step, final_reward):
+        for i in range(0, loop):
+            if self.can_begin_train():
+                self.train_Q_network(max_step, final_reward)
 
     def can_begin_train(self):
         return len(self.replay_buffer) >= self.config.REPLAY_SIZE and len(
             self.replay_buffer_neg) >= self.config.REPLAY_SIZE
 
-    def train_Q_network(self):
-        self.time_step += 1
+    def train_Q_network(self, max_step, final_reward):
+        self.iteration.assign_add([1])
         print '.',
         # Step 1: obtain random minibatch from replay memory
         action_batch, minibatch, next_state_batch, reward_batch, state_batch = self.obtain_minibatch()
@@ -93,12 +102,14 @@ class DQN(object):
         # Step 2: calculate y
         y_batch = self.generate_y_label(minibatch, next_state_batch, reward_batch)
 
-        summary, opt = self.session.run([self.summary, self.optimizer], feed_dict={
+        summary, opt = self.session.run([self.summary, self.optimizer, self.iteration], feed_dict={
             self.y_input: y_batch,
             self.action_input: action_batch,
-            self.state_input: state_batch
+            self.state_input: state_batch,
+            self.max_step: max_step,
+            self.reward_sum: final_reward
         })
-        self.writer.add_summary(summary, self.time_step)
+        self.writer.add_summary(summary, opt)
 
     def generate_y_label(self, minibatch, next_state_batch, reward_batch):
         y_batch = []
@@ -141,4 +152,3 @@ class DQN(object):
 
     def save_model(self):
         self.saver.save(self.session, self.config.CHECK_POINT_PATH)
-        tf.nn.conv2d
