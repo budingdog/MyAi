@@ -134,4 +134,3 @@ class DQN(object):
 
     def save_model(self):
         self.saver.save(self.session, self.config.CHECK_POINT_PATH)
-        tf.nn.conv2d

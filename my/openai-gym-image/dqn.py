@@ -3,7 +3,6 @@ from collections import deque
 import tensorflow as tf
 import numpy as np
 
-
 class DQN(object):
     # DQN Agent
     def __init__(self, env, config):
@@ -28,6 +27,8 @@ class DQN(object):
         self.saver = tf.train.Saver()
         self.summary = tf.summary.merge_all()
 
+        self.iteration = 0
+
         try:
             self.saver.restore(self.session, config.CHECK_POINT_PATH)
         except:
@@ -43,7 +44,6 @@ class DQN(object):
         self.max_step = tf.placeholder("float")
         self.reward_sum = tf.placeholder("float")
         self.reward_avg = self.reward_sum / self.max_step
-        self.iteration = tf.get_variable('name', shape=[1], dtype='int32', initializer=tf.initializers.zeros)
         with tf.name_scope('Q-network'):
             conv1 = tf.layers.Conv2D(filters=self.config.HIDDEN[0], kernel_size=[8,8],strides=[4,4],
                                      padding='SAME',activation=tf.nn.relu)
@@ -66,7 +66,7 @@ class DQN(object):
             Q_action = tf.reduce_sum(tf.multiply(self.Q_value, self.action_input), reduction_indices=1, name='y')
             self.cost = tf.reduce_mean(tf.square(self.y_input - Q_action))
             # self.cost = tf.losses.softmax_cross_entropy(self.y_input, Q_action)
-        self.optimizer = tf.train.AdamOptimizer(0.001).minimize(self.cost)
+        self.optimizer = tf.train.AdamOptimizer(0.0001).minimize(self.cost)
 
     def create_summary(self):
         tf.summary.scalar('Q-value', tf.reduce_max(self.Q_value))
@@ -78,10 +78,13 @@ class DQN(object):
     def store_sample(self, state, action, reward, next_state, done):
         one_hot_action = np.zeros(self.action_dim)
         one_hot_action[action] = 1
-        if reward != 0:
+        if self.is_pos(reward):
             self.replay_buffer.append((state, one_hot_action, reward, next_state, done))
         else:
             self.replay_buffer_neg.append((state, one_hot_action, reward, next_state, done))
+
+    def is_pos(self, reward):
+        return reward != 0
 
 
     def do_train(self, loop, max_step, final_reward):
@@ -90,11 +93,11 @@ class DQN(object):
                 self.train_Q_network(max_step, final_reward)
 
     def can_begin_train(self):
-        return len(self.replay_buffer) >= self.config.REPLAY_SIZE and len(
-            self.replay_buffer_neg) >= self.config.REPLAY_SIZE
+        return len(self.replay_buffer) >= self.config.BATCH_SIZE and len(
+            self.replay_buffer_neg) >= self.config.BATCH_SIZE
 
     def train_Q_network(self, max_step, final_reward):
-        self.iteration.assign_add([1])
+        self.iteration += 1
         print '.',
         # Step 1: obtain random minibatch from replay memory
         action_batch, minibatch, next_state_batch, reward_batch, state_batch = self.obtain_minibatch()
@@ -102,14 +105,14 @@ class DQN(object):
         # Step 2: calculate y
         y_batch = self.generate_y_label(minibatch, next_state_batch, reward_batch)
 
-        summary, opt = self.session.run([self.summary, self.optimizer, self.iteration], feed_dict={
+        summary, opt = self.session.run([self.summary, self.optimizer], feed_dict={
             self.y_input: y_batch,
             self.action_input: action_batch,
             self.state_input: state_batch,
             self.max_step: max_step,
             self.reward_sum: final_reward
         })
-        self.writer.add_summary(summary, opt)
+        self.writer.add_summary(summary, self.iteration)
 
     def generate_y_label(self, minibatch, next_state_batch, reward_batch):
         y_batch = []
