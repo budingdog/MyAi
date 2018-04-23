@@ -3,6 +3,7 @@ from collections import deque
 import tensorflow as tf
 import numpy as np
 
+
 class DQN(object):
     # DQN Agent
     def __init__(self, env, config):
@@ -13,7 +14,7 @@ class DQN(object):
         self.replay_buffer_neg = deque(maxlen=config.REPLAY_SIZE)
         # init some parameters
         self.epsilon = config.INITIAL_EPSILON
-        self.state_height = 84
+        self.state_height = 110
         self.state_width = 84
         self.action_dim = env.action_space.n
 
@@ -45,11 +46,11 @@ class DQN(object):
         self.reward_sum = tf.placeholder("float")
         self.reward_avg = self.reward_sum / self.max_step
         with tf.name_scope('Q-network'):
-            conv1 = tf.layers.Conv2D(filters=self.config.HIDDEN[0], kernel_size=[8,8],strides=[4,4],
-                                     padding='SAME',activation=tf.nn.relu)
+            conv1 = tf.layers.Conv2D(filters=self.config.HIDDEN[0], kernel_size=[8, 8], strides=[4, 4],
+                                     padding='SAME', activation=tf.nn.relu)
             conv_layer1 = conv1(self.state_input)
-            conv2 = tf.layers.Conv2D(filters=self.config.HIDDEN[1], kernel_size=[4,4],strides=[2,2],
-                                     padding='SAME',activation=tf.nn.relu)
+            conv2 = tf.layers.Conv2D(filters=self.config.HIDDEN[1], kernel_size=[4, 4], strides=[2, 2],
+                                     padding='SAME', activation=tf.nn.relu)
             conv_layer2 = conv2(conv_layer1)
             input_tensors = tf.reshape(conv_layer2,
                                        [-1, conv_layer2.shape[1] * conv_layer2.shape[2] * conv_layer2.shape[3]])
@@ -85,7 +86,6 @@ class DQN(object):
 
     def is_pos(self, reward):
         return reward != 0
-
 
     def do_train(self, loop, max_step, final_reward):
         for i in range(0, loop):
@@ -133,8 +133,9 @@ class DQN(object):
         next_state_batch = [data[3] for data in minibatch]
         return action_batch, minibatch, next_state_batch, reward_batch, state_batch
 
-    def egreedy_action(self, state):
-        self.epsilon -= (self.config.INITIAL_EPSILON - self.config.FINAL_EPSILON) / self.config.EPISODE
+    def egreedy_action(self, state, episode):
+        self.epsilon = self.config.INITIAL_EPSILON - (
+                self.config.INITIAL_EPSILON - self.config.FINAL_EPSILON) * episode / self.config.EPISODE
         if random.random() <= self.epsilon:
             return random.randint(0, self.action_dim - 1)
         else:

@@ -16,7 +16,7 @@ STEP = 10000  # Step limitation in an episode
 CHECK_POINT_STEP = 10
 TEST = 3  # The number of experiment test every 100 episode
 DISP_DELAY = 0
-VERSION = 'SI-v0'
+VERSION = 'si-v0'
 FRAME = 4
 TRAIN_LOOP = 50
 
@@ -61,7 +61,7 @@ def main():
         reward_sum = 0
         rewarder = Rewarder()
         for step in xrange(STEP):
-            action = agent.egreedy_action(input_state)  # e-greedy action for train
+            action = agent.egreedy_action(input_state, episode)  # e-greedy action for train
             next_state, reward, done, _ = env.step(action)
             next_state = ip.convert(next_state)
             next_input_state = sb.store(next_state)
