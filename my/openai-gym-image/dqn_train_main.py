@@ -6,20 +6,22 @@ from collections import deque
 from sample_buffer import SampleBuffer
 import pickle
 from img_processor import ImgProcessor
+import objgraph
+import gc
 
 # ENV_NAME = 'CartPole-v0'
-# ENV_NAME = 'MsPacman-v0'
-ENV_NAME = 'SpaceInvaders-v0'
+ENV_NAME = 'MsPacman-v0'
+# ENV_NAME = 'SpaceInvaders-v0'
 # ENV_NAME = 'Breakout-v0'
 EPISODE = 10000  # Episode limitation
 STEP = 10000  # Step limitation in an episode
 CHECK_POINT_STEP = 10
 TEST = 3  # The number of experiment test every 100 episode
 DISP_DELAY = 0
-VERSION = 'si-v0'
+VERSION = 'pac-v0'
 FRAME = 4
 TRAIN_LOOP = 50
-
+DUMP_RAM_STEP = 10
 
 class Rewarder(object):
 
@@ -48,7 +50,7 @@ def main():
     print('game:{} action_space:{}'.format(ENV_NAME, env.action_space.n))
     config = DqnConfig(EPISODE, VERSION)
     agent = DQN(env, config)
-    ip = ImgProcessor(config)
+    ip = ImgProcessor()
 
     for episode in xrange(1, EPISODE):
         # initialize task
@@ -73,8 +75,8 @@ def main():
             input_state = next_input_state
             if done:
                 step_reward = float(reward_sum) / step
-                print('episode:{}, step:{}, reward:{}, reward_avg:{}'.format(episode, step, reward_sum,
-                                                                             step_reward))
+                print('\nepisode:{}, step:{}, reward:{}, reward_avg:{}'.format(episode, step, reward_sum,
+                                                                             step_reward)),
                 agent.do_train(TRAIN_LOOP, step, reward_sum)
                 break
         # save model

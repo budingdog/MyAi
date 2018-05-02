@@ -13,7 +13,6 @@ class SampleBuffer(object):
             self.queue.append(np.zeros(dim))
 
     def store(self, state):
-        state = (state - 127.0) / 128
         self.queue.append(state)
         A = list(self.queue)
         B = np.einsum('abc->bca', A)

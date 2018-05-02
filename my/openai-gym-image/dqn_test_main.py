@@ -16,7 +16,7 @@ STEP = 300000  # Step limitation in an episode
 CHECK_POINT_STEP = 1
 TEST = 3  # The number of experiment test every 100 episode
 DISP_DELAY = 20
-VERSION = 'pac-v1'
+VERSION = 'pac-v4'
 FRAME = 4
 
 
@@ -25,7 +25,7 @@ def main():
     env = gym.make(ENV_NAME)
     config = DqnConfig(EPISODE, VERSION)
     agent = DQN(env, config)
-    ip = ImgProcessor(config)
+    ip = ImgProcessor()
 
     for episode in xrange(1, EPISODE):
         # initialize task
