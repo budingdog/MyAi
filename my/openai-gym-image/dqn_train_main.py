@@ -18,7 +18,7 @@ STEP = 10000  # Step limitation in an episode
 CHECK_POINT_STEP = 10
 TEST = 3  # The number of experiment test every 100 episode
 DISP_DELAY = 0
-VERSION = 'pac-v0'
+VERSION = 'pac-v2'
 FRAME = 4
 TRAIN_LOOP = 50
 DUMP_RAM_STEP = 10
@@ -34,12 +34,14 @@ class Rewarder(object):
             if reward > 0:
                 res_result = 1.0
             elif self.last_info != None and self.last_info['ale.lives'] - info['ale.lives'] > 0:
-                res_result = -1.0
+                res_result = 0
+            else:
+                res_result = 0.1
         else:
             if info['ale.lives'] > 0:
                 res_result = 1.0
             else:
-                res_result = -1.0
+                res_result = 0
         self.last_info = info
         return res_result
 

@@ -95,7 +95,7 @@ class DQN(object):
             self.replay_buffer_neg.append((state, one_hot_action, reward, next_state, done))
 
     def is_pos(self, reward):
-        return reward < 0
+        return reward <= 0
 
     def do_train(self, loop, max_step, final_reward):
         for i in range(0, loop):
