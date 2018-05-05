@@ -66,7 +66,7 @@ class DQN(object):
                     input_tensors = tf.layers.dense(input_tensors, units=self.config.HIDDEN[i], activation=tf.nn.relu,
                                                     name='hidden{}'.format(i))
                     self._activation_summary(input_tensors)
-            self.Q_value = tf.layers.dense(input_tensors, units=self.action_dim, activation=tf.nn.relu,
+            self.Q_value = tf.layers.dense(input_tensors, units=self.action_dim,
                                            name='output')
 
     def create_training_method(self):
@@ -95,7 +95,7 @@ class DQN(object):
             self.replay_buffer_neg.append((state, one_hot_action, reward, next_state, done))
 
     def is_pos(self, reward):
-        return reward <= 0
+        return reward != 0
 
     def do_train(self, loop, max_step, final_reward):
         for i in range(0, loop):
