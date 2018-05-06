@@ -42,7 +42,7 @@ class DQN(object):
         self.state_input = tf.placeholder("float", [None, self.state_height, self.state_width, self.config.FRAME])
         tf.summary.image('input', self.state_input)
 
-        normalized_input = (self.state_input - 128) / 256
+        normalized_input = (self.state_input - 128.0) / 128
         self.max_step = tf.placeholder("float")
         self.reward_sum = tf.placeholder("float")
         self.reward_avg = self.reward_sum / self.max_step
