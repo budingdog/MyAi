@@ -16,8 +16,9 @@ STEP = 300000  # Step limitation in an episode
 CHECK_POINT_STEP = 1
 TEST = 3  # The number of experiment test every 100 episode
 DISP_DELAY = 20
-VERSION = 'pac-v3'
+VERSION = 'pac-v9'
 FRAME = 4
+from rewarder import Rewarder
 
 
 def main():
@@ -36,11 +37,13 @@ def main():
 
         total_reward = 0
         for i in xrange(TEST):
+            rewarder = Rewarder()
             for j in xrange(STEP):
                 env.render()
                 time.sleep(DISP_DELAY / 1000.0)
                 action = agent.action(input_state)  # direct action for test
                 next_state, reward, done, _ = env.step(action)
+                trainReward = rewarder.get_reward(reward, done, _)
                 next_state = ip.convert(next_state)
                 next_input_state = sb.store(next_state)
                 total_reward += reward

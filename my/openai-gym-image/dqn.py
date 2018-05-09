@@ -13,7 +13,7 @@ class DQN(object):
         self.replay_buffer_neg = deque(maxlen=config.REPLAY_SIZE)
         # init some parameters
         self.epsilon = config.INITIAL_EPSILON
-        self.state_height = 110
+        self.state_height = 84
         self.state_width = 84
         self.action_dim = env.action_space.n
 
@@ -38,16 +38,22 @@ class DQN(object):
         self.writer.close()
 
     def create_Q_network(self):
-        # input layer
-        self.state_input = tf.placeholder("float", [None, self.state_height, self.state_width, self.config.FRAME])
-        tf.summary.image('input', self.state_input)
 
-        normalized_input = (self.state_input - 128.0) / 128
-        self.max_step = tf.placeholder("float")
-        self.reward_sum = tf.placeholder("float")
-        self.reward_avg = self.reward_sum / self.max_step
-        self.iteration = tf.get_variable('step', shape=[], initializer=tf.zeros_initializer, dtype=tf.int32)
-        self.iteration = tf.assign_add(self.iteration, 1, name='step_inc')
+        with tf.name_scope('input'):
+            # input layer
+            self.state_input = tf.placeholder("float", [None, self.state_height, self.state_width, self.config.FRAME])
+            # tf.summary.image('input', self.state_input)
+            normalized_input = (self.state_input - 128.0) / 128
+
+        with tf.name_scope('index'):
+            # tf.summary.histogram('input', normalized_input)
+            self.max_step = tf.placeholder("float")
+            self.reward_sum = tf.placeholder("float")
+            self.reward_avg = self.reward_sum / self.max_step
+            self.iteration = tf.get_variable('step', shape=[], initializer=tf.zeros_initializer, dtype=tf.int32)
+            self.iteration = tf.assign_add(self.iteration, 1, name='step_inc')
+            self.epsilonRate = tf.placeholder("float")
+
         with tf.name_scope('Q-network'):
             with tf.name_scope('conv_1'):
                 conv1 = tf.layers.Conv2D(filters=self.config.HIDDEN[0], kernel_size=[8, 8], strides=[4, 4],
@@ -59,11 +65,16 @@ class DQN(object):
                                          padding='SAME', activation=tf.nn.relu)
                 conv_layer2 = conv2(conv_layer1)
                 self._activation_summary(conv_layer2)
-            input_tensors = tf.reshape(conv_layer2,
-                                       [-1, conv_layer2.shape[1] * conv_layer2.shape[2] * conv_layer2.shape[3]])
-            for i in range(2, len(self.config.HIDDEN)):
-                with tf.name_scope('fully_con_' + str(i)):
-                    input_tensors = tf.layers.dense(input_tensors, units=self.config.HIDDEN[i], activation=tf.nn.relu,
+            with tf.name_scope('conv_3'):
+                conv3 = tf.layers.Conv2D(filters=self.config.HIDDEN[2], kernel_size=[3, 3], strides=[1, 1],
+                                         padding='SAME', activation=tf.nn.relu)
+                conv_layer3 = conv3(conv_layer2)
+                self._activation_summary(conv_layer3)
+            input_tensors = tf.reshape(conv_layer3,
+                                       [-1, conv_layer3.shape[1] * conv_layer3.shape[2] * conv_layer3.shape[3]])
+            for i in range(3, len(self.config.HIDDEN)):
+                with tf.name_scope('fully_con_' + str(i + 1)):
+                    input_tensors = tf.layers.dense(input_tensors, units=self.config.HIDDEN[i], activation=tf.nn.leaky_relu,
                                                     name='hidden{}'.format(i))
                     self._activation_summary(input_tensors)
             self.Q_value = tf.layers.dense(input_tensors, units=self.action_dim,
@@ -79,6 +90,7 @@ class DQN(object):
         self.optimizer = tf.train.AdamOptimizer(0.001).minimize(self.cost)
 
     def create_summary(self):
+        tf.summary.scalar('control/epsilon', self.epsilonRate)
         tf.summary.scalar('control/Q-value/max', tf.reduce_max(self.Q_value))
         tf.summary.scalar('control/Q-value/mean', tf.reduce_mean(self.Q_value))
         tf.summary.scalar('control/loss', self.cost)
@@ -119,7 +131,8 @@ class DQN(object):
             self.action_input: action_batch,
             self.state_input: state_batch,
             self.max_step: max_step,
-            self.reward_sum: final_reward
+            self.reward_sum: final_reward,
+            self.epsilonRate: self.epsilon
         })
         self.writer.add_summary(summary, step)
 
@@ -151,10 +164,13 @@ class DQN(object):
             return self.action(state)
 
     def action(self, state):
-        action = np.argmax(self.Q_value.eval(feed_dict={
+        q = self.Q_value.eval(feed_dict={
             self.state_input: [state]
-        })[0])
-        print action,
+        })[0]
+        # maxQ = np.max(q)
+        action = np.argmax(q)
+        # print '{}({:.2f})'.format(action, maxQ),
+        print '{}'.format(action),
         return action
 
     def save_model(self):
@@ -174,6 +190,6 @@ class DQN(object):
         # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
         # session. This helps the clarity of presentation on tensorboard.
         tensor_name = conv_output.op.name
-        tf.summary.histogram(tensor_name + '/activations', conv_output)
+        # tf.summary.histogram(tensor_name + '/activations', conv_output)
         tf.summary.scalar(tensor_name + '/sparsity',
                           tf.nn.zero_fraction(conv_output))
