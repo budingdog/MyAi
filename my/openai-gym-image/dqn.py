@@ -3,6 +3,7 @@ from collections import deque
 import tensorflow as tf
 import numpy as np
 
+
 class DQN(object):
     # DQN Agent
     def __init__(self, env, config):
@@ -55,30 +56,18 @@ class DQN(object):
             self.epsilonRate = tf.placeholder("float")
 
         with tf.name_scope('Q-network'):
-            with tf.name_scope('conv_1'):
-                conv1 = tf.layers.Conv2D(filters=self.config.HIDDEN[0], kernel_size=[8, 8], strides=[4, 4],
-                                         padding='SAME', activation=tf.nn.relu)
-                conv_layer1 = conv1(normalized_input)
-                self._activation_summary(conv_layer1)
-            with tf.name_scope('conv_2'):
-                conv2 = tf.layers.Conv2D(filters=self.config.HIDDEN[1], kernel_size=[4, 4], strides=[2, 2],
-                                         padding='SAME', activation=tf.nn.relu)
-                conv_layer2 = conv2(conv_layer1)
-                self._activation_summary(conv_layer2)
-            with tf.name_scope('conv_3'):
-                conv3 = tf.layers.Conv2D(filters=self.config.HIDDEN[2], kernel_size=[3, 3], strides=[1, 1],
-                                         padding='SAME', activation=tf.nn.relu)
-                conv_layer3 = conv3(conv_layer2)
-                self._activation_summary(conv_layer3)
-            input_tensors = tf.reshape(conv_layer3,
-                                       [-1, conv_layer3.shape[1] * conv_layer3.shape[2] * conv_layer3.shape[3]])
-            for i in range(3, len(self.config.HIDDEN)):
-                with tf.name_scope('fully_con_' + str(i + 1)):
-                    input_tensors = tf.layers.dense(input_tensors, units=self.config.HIDDEN[i], activation=tf.nn.leaky_relu,
-                                                    name='hidden{}'.format(i))
-                    self._activation_summary(input_tensors)
-            self.Q_value = tf.layers.dense(input_tensors, units=self.action_dim,
-                                           name='output')
+            conv1 = tf.layers.Conv2D(filters=self.config.HIDDEN[0], kernel_size=[8, 8], strides=[4, 4],
+                                     padding='SAME', activation=tf.nn.relu)
+            conv_layer1 = conv1(self.state_input)
+            conv2 = tf.layers.Conv2D(filters=self.config.HIDDEN[1], kernel_size=[4, 4], strides=[2, 2],
+                                     padding='SAME', activation=tf.nn.relu)
+            conv_layer2 = conv2(conv_layer1)
+            input_tensors = tf.reshape(conv_layer2,
+                                       [-1, conv_layer2.shape[1] * conv_layer2.shape[2] * conv_layer2.shape[3]])
+            for i in range(2, len(self.config.HIDDEN)):
+                input_tensors = tf.layers.dense(input_tensors, units=self.config.HIDDEN[i], activation=tf.nn.relu,
+                                                name='hidden{}'.format(i))
+            self.Q_value = tf.layers.dense(input_tensors, units=self.action_dim, name='output')
 
     def create_training_method(self):
         with tf.name_scope('loss'):
@@ -107,7 +96,7 @@ class DQN(object):
             self.replay_buffer_neg.append((state, one_hot_action, reward, next_state, done))
 
     def is_pos(self, reward):
-        return reward != 0
+        return reward < 0
 
     def do_train(self, loop, max_step, final_reward):
         for i in range(0, loop):

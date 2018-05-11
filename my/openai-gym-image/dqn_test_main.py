@@ -16,7 +16,7 @@ STEP = 300000  # Step limitation in an episode
 CHECK_POINT_STEP = 1
 TEST = 3  # The number of experiment test every 100 episode
 DISP_DELAY = 20
-VERSION = 'pac-v9'
+VERSION = 'pac-old-v0-s3'
 FRAME = 4
 from rewarder import Rewarder
 

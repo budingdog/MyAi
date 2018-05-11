@@ -3,9 +3,9 @@ class DqnConfig(object):
     def __init__(self, episode, version):
         super(DqnConfig, self).__init__()
         self.REPLAY_SIZE = 1024  # experience replay buffer size
-        self.BATCH_SIZE = 64  # size of minibatch
-        self.INITIAL_EPSILON = 0.2  # starting value of epsilon
-        self.FINAL_EPSILON = 0.1  # final value of epsilon
+        self.BATCH_SIZE = 32  # size of minibatch
+        self.INITIAL_EPSILON = 0.4  # starting value of epsilon
+        self.FINAL_EPSILON = 0.01  # final value of epsilon
         self.VERSION = version
         self.CHECK_POINT_PATH = 'model/{}/model.ckpt'.format(self.VERSION)
         self.CONTEXT_PATH = 'model/{}/context'.format(self.VERSION)
