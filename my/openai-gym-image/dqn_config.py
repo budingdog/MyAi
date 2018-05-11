@@ -4,7 +4,7 @@ class DqnConfig(object):
         super(DqnConfig, self).__init__()
         self.REPLAY_SIZE = 1024  # experience replay buffer size
         self.BATCH_SIZE = 32  # size of minibatch
-        self.INITIAL_EPSILON = 0.5  # starting value of epsilon
+        self.INITIAL_EPSILON = 0.4  # starting value of epsilon
         self.FINAL_EPSILON = 0.01  # final value of epsilon
         self.VERSION = version
         self.CHECK_POINT_PATH = 'model/{}/model.ckpt'.format(self.VERSION)

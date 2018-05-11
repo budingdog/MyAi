@@ -8,15 +8,15 @@ import pickle
 from img_processor import ImgProcessor
 
 # ENV_NAME = 'CartPole-v0'
-# ENV_NAME = 'MsPacman-v0'
-ENV_NAME = 'SpaceInvaders-v0'
+ENV_NAME = 'MsPacman-v0'
+# ENV_NAME = 'SpaceInvaders-v0'
 # ENV_NAME = 'Breakout-v0'
 EPISODE = 10000  # Episode limitation
 STEP = 10000  # Step limitation in an episode
 CHECK_POINT_STEP = 10
 TEST = 3  # The number of experiment test every 100 episode
 DISP_DELAY = 0
-VERSION = 'SI-v0'
+VERSION = 'pac-old-v0-s3'
 FRAME = 4
 TRAIN_LOOP = 50
 
